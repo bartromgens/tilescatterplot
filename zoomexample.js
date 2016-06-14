@@ -1,28 +1,29 @@
 var ex_chart = example().zoom(true);
 
 var data = [];
+var hasTile = false;
 //    for (var i = 0; i < 100; i++) {
 //        data.push([Math.random()*100, Math.random()*100]);
 //    }
 
-d3.json('out2.geojson', function(json) {
+d3.json('out1.geojson', function(json) {
     var coordinates = json.features[0].geometry.coordinates;
     for (var i in coordinates)
     {
-//            console.log(coordinates[i][0]);
         data.push([coordinates[i][0], coordinates[i][1]]);
-//            data.push([0.2, 0.1]);
     }
-    console.log(data);
 
-//        data.forEach(function(d) {
-////            console.log(d);
-//            d.x = d[0];
-//            d.y = d[1];
-//        });
-    d3.select('#chart')
-            .append("svg").attr("width", window.innerWidth).attr("height",window.innerHeight)
-            .datum(data).call(ex_chart);
+    d3.json('out3.geojson', function(json) {
+        var coordinates = json.features[0].geometry.coordinates;
+        for (var i in coordinates)
+        {
+            data.push([coordinates[i][0], coordinates[i][1]]);
+        }
+
+        d3.select('#chart')
+                .append("svg").attr("width", window.innerWidth).attr("height",window.innerHeight)
+                .datum(data).call(ex_chart);
+    });
 });
 
 
@@ -55,6 +56,7 @@ function example() {
 
     function chart(selection) {
         console.log('create chart');
+        console.log(selection);
         selection.each(function(data) {
             svg = d3.select(this).selectAll('svg').data([data]);
             svg.enter().append('svg');
@@ -130,37 +132,60 @@ function example() {
 
 
     function update() {
+        console.log('update begin');
         var gs = svg.select("g.scatter");
+        var circle = gs.selectAll("circle");
+        console.log(circle);
 
-        var circle = gs.selectAll("circle")
-                .data(function(d) {
-                    return d;
+        if (hasTile)
+        {
+            update_path();
+            update_circles(circle);
+            svg.select('g.x.axis').call(xaxis);
+            svg.select('g.y.axis').call(yaxis);
+        } else {
+            hasTile = true;
+            d3.json('out1.geojson', function(json) {
+                data = [];
+                var coordinates = json.features[0].geometry.coordinates;
+                for (var i in coordinates)
+                {
+                    data.push([coordinates[i][0], coordinates[i][1]]);
+                }
+
+                d3.json('out2.geojson', function(json) {
+                    var coordinates = json.features[0].geometry.coordinates;
+                    for (var i in coordinates)
+                    {
+                        data.push([coordinates[i][0], coordinates[i][1]]);
+                    }
+
+                    update_path();
+                    update_circles(circle);
                 });
+            });
+        }
+        console.log('update end');
+    }
 
-        circle.enter().append("svg:circle")
-                .attr("class", "points")
-                .style("fill", "steelblue")
-                .attr("cx", function(d) {
-                    return X(d);
-                })
-                .attr("cy", function(d) {
-                    return Y(d);
-                })
-                .attr("r", 4);
-
-        circle.attr("cx", function(d) {
-                    return X(d);
-                })
-                .attr("cy", function(d) {
-                    return Y(d);
-                });
-
-        circle.exit().remove();
-
+    function update_path() {
         var pathline = svg.select("path.line");
         pathline.attr("d", valueline(data));
-        svg.select("path").attr("transform", "translate("+xyzoom.translate()+")" + " scale("+xyzoom.scale()+")");
-            console.log(pathline);
+    }
+
+    function update_circles(circle) {
+        circle = circle = circle.data(data, function(d) { return d; });
+        circle.enter().append("svg:circle")
+            .attr("class", "points")
+            .style("fill", "steelblue")
+            .attr("cx", function(d) {return X(d);})
+            .attr("cy", function(d) {return Y(d);})
+            .attr("r", 4);
+
+        circle.attr("cx", function(d) { return X(d); })
+              .attr("cy", function(d) { return Y(d); });
+
+        circle.exit().remove();
     }
 
     function zoom_update() {
@@ -173,12 +198,11 @@ function example() {
     }
 
     function draw() {
-            console.log('draw');
         svg.select('g.x.axis').call(xaxis);
         svg.select('g.y.axis').call(yaxis);
 
-        zoom_update();
         update();
+        zoom_update();
     }
 
     // X value to scale
