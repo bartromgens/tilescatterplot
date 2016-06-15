@@ -39,11 +39,13 @@ d3.json(filename, function(json) {
 });
 
 
- function long2tile(lon, zoom) { return (Math.floor((lon+180)/360*Math.pow(2,zoom))); }
- function lat2tile(lat, zoom)
- {
+function long2tile(lon, zoom) {
+    return (Math.floor((lon+180)/360*Math.pow(2,zoom)));
+}
+
+function lat2tile(lat, zoom) {
     return (Math.floor((1-Math.log(Math.tan(lat*Math.PI/180) + 1/Math.cos(lat*Math.PI/180))/Math.PI)/2 *Math.pow(2,zoom)));
- }
+}
 
 
 function example() {
@@ -62,7 +64,7 @@ function example() {
     var yscale = d3.scale.linear();
 //    var yscale = d3.scale.log()
 //        .base(10)
-//        .domain([Math.exp(0), Math.exp(1)]);
+//        .domain([Math.exp(0), Math.exp(10)]);
     var zoomable = true;
 
     var xyzoom = d3.behavior.zoom()
@@ -167,7 +169,7 @@ function example() {
             .attr("class", "marker")
             .attr("cx", function(d) {return X(d);})
             .attr("cy", function(d) {return Y(d);})
-            .attr("r", 1);
+            .attr("r", 2);
 
         circle.attr("cx", function(d) { return X(d); })
               .attr("cy", function(d) { return Y(d); });
@@ -178,16 +180,10 @@ function example() {
     var zoomlevel = 1;
 
     function zoom_update() {
-        xyzoom = d3.behavior.zoom()
-            .x(xscale)
-            .y(yscale)
-            .on("zoom", zoomable ? draw : null);
-
-
         var xmin = Math.max(-178.0, xscale.domain()[0]);
         var xmax = Math.min(178.0, xscale.domain()[1]);
-        var ymin = Math.max(-84, yscale.domain()[0]);
-        var ymax = Math.min(84, yscale.domain()[1]);
+        var ymin = Math.max(-84.0, yscale.domain()[0]);
+        var ymax = Math.min(84.0, yscale.domain()[1]);
 //        console.log(ymin + ", " + ymax);
 //        console.log(xmin + ", " + xmax);
 //        console.log("tilenr_x_min: " + tilenr_x_min);
@@ -197,7 +193,16 @@ function example() {
 //        console.log("tilenr_y_max: " + tilenr_y_max);
 //        console.log("ntilesy:", ntilesy);
 //        console.log("ntilesx:", ntilesx);
-        zoomlevel = Math.min(8, Math.floor(200/Math.abs(xmax-xmin)));
+        var rangex = Math.abs(xmax-xmin);
+        var rangey = Math.abs(ymax-ymin);
+        var area = rangex * rangey;
+//        zoomlevel = Math.min(8, Math.floor(Math.log(36/(xmax-xmin)+1, 20)*4));
+        var zoomrequest = 360*180/area/20;
+//        var zoomrequest = 360/rangex;
+//        console.log(zoomrequest);
+        zoomlevel = Math.floor(Math.log(zoomrequest+1));
+        zoomlevel = Math.min(9, zoomlevel);
+        zoomlevel = Math.max(1, zoomlevel);
 
         var tilenr_x_min = long2tile(xmin, zoomlevel);
         var tilenr_x_max = long2tile(xmax, zoomlevel);
@@ -206,27 +211,32 @@ function example() {
         var ntilesx = Math.abs(tilenr_x_max - tilenr_x_min) + 1;
         var ntilesy = Math.abs(tilenr_y_max - tilenr_y_min) + 1;
         var ntiles = ntilesx * ntilesy;
-        console.log("ntiles:", ntiles);
-//        if (ntiles > 20 && zoomlevel > 1) {
+//        if (ntiles > 12 && zoomlevel > 1) {
 //            zoomlevel = zoomlevel - 1;
 //        }
 //        if (ntiles < 4) {
 //            zoomlevel = zoomlevel + 1;
 //        }
-        console.log("zoomlevel:", zoomlevel);
+//        if (data.length > 5000) {
+//            zoomlevel = zoomlevel - 1;
+//        }
         var lower_tilenrx = Math.min(tilenr_x_max, tilenr_x_min);
         var upper_tilenrx = Math.max(tilenr_x_max, tilenr_x_min);
         var lower_tilenry = Math.min(tilenr_y_max, tilenr_y_min);
         var upper_tilenry = Math.max(tilenr_y_max, tilenr_y_min);
 //        console.log("x", lower_tilenrx, upper_tilenrx);
 //        console.log("y", lower_tilenry, upper_tilenry);
-        for (var i = lower_tilenrx-1; i <= upper_tilenrx+1; ++i) {
-            for (var j = lower_tilenry-1; j <= upper_tilenry+1; ++j) {
+        for (var i = lower_tilenrx; i <= upper_tilenrx; ++i) {
+            for (var j = lower_tilenry; j <= upper_tilenry; ++j) {
                 var tile_filename = 'tiles/' + zoomlevel + '/' + i + '/' +  j + '.geojson';
                 if (tile_filename in tiles) {
-                    var coords = tiles[tile_filename];
-                    for (var k in coords) {
-                        data.push([coords[k][1], coords[k][0]]);
+                    if (tiles[tile_filename] == null) {
+                        continue;
+                    }
+                    if (tiles[tile_filename].type == "LineString") {
+                        add_line(tiles[tile_filename].coordinates);
+                    } else if (tiles[tile_filename].type == "MultiLineString") {
+                        add_multi_line(tiles[tile_filename].coordinates);
                     }
                 } else {
                     load_tile(tile_filename, zoomlevel);
@@ -234,8 +244,27 @@ function example() {
             }
         }
 
-        update();
+        console.log("ntiles:", ntiles, "zoomlevel:", zoomlevel, "points:", data.length/2);
+        xyzoom = d3.behavior.zoom()
+            .x(xscale)
+            .y(yscale)
+            .on("zoom", zoomable ? draw : null);
         svg.select('rect.zoom.xy.box').call(xyzoom);
+        update();
+    }
+
+    function add_line(line) {
+        for (var i in line) {
+            data.push([line[i][1], line[i][0]]);
+        }
+    }
+
+    function add_multi_line(line_segments) {
+        for (var i in line_segments) {
+            for (var j in line_segments[i]) {
+                data.push([line_segments[i][j][1], line_segments[i][j][0]]);
+            }
+        }
     }
 
     function load_tile(tile_filename, zoom_at_start) {
@@ -244,14 +273,17 @@ function example() {
                 tiles[tile_filename] = null;
                 return;
             }
-//            console.log("FILE FOUND!", tile_filename);
+            console.log("FILE FOUND!", tile_filename);
             var coordinates = json.features[0].geometry.coordinates;
-            tiles[tile_filename] = coordinates;
+            var type = json.features[0].geometry.type;
+            tiles[tile_filename] = json.features[0].geometry;
             if (zoomlevel != zoom_at_start) {
                 return;
             }
-            for (var i in coordinates) {
-                data.push([coordinates[i][1], coordinates[i][0]]);
+            if (type == "LineString") {
+                add_line(coordinates);
+            } else if (type == "MultiLineString") {
+                add_multi_line(coordinates);
             }
             update();
         });
@@ -263,6 +295,7 @@ function example() {
         svg.select('g.x.axis').call(xaxis);
         svg.select('g.y.axis').call(yaxis);
         zoom_update();
+//        console.log('points', data.length);
 //        update();
 //        svg.attr("transform", "translate(" + xyzoom.translate() + ")scale(" + xyzoom.scale() + ")");
     }
