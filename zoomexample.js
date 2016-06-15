@@ -1,47 +1,68 @@
+// taken from http://stackoverflow.com/a/30056867/607041, thanks!
+Array.matrix = function(numrows, numcols, initial) {
+    var arr = [];
+    for (var i = 0; i < numrows; ++i) {
+        var columns = [];
+        for (var j = 0; j < numcols; ++j) {
+            columns[j] = initial;
+        }
+        arr[i] = columns;
+    }
+    return arr;
+}
+
+
+var plot_width = parseInt(d3.select("body").select("#chart").style('width'), 10);
+var margin = {top: 60, right: 30, bottom: 50, left: 60};
+var width = plot_width - margin.left - margin.right;
+var height = Math.min(plot_width - margin.top - margin.bottom, 600);
+var plot_height = height + margin.top + margin.bottom;
+
 var ex_chart = example().zoom(true);
 
 var data = [];
-var hasTile = false;
-//    for (var i = 0; i < 100; i++) {
-//        data.push([Math.random()*100, Math.random()*100]);
-//    }
+var hasTile = true;
+var tiles = {};
 
-d3.json('out1.geojson', function(json) {
+var filename = 'out.geojson';
+//filename = 'tiles/6/16/34.geojson';
+d3.json(filename, function(json) {
     var coordinates = json.features[0].geometry.coordinates;
     for (var i in coordinates)
     {
-        data.push([coordinates[i][0], coordinates[i][1]]);
+        data.push([coordinates[i][1], coordinates[i][0]]);
     }
 
-    d3.json('out3.geojson', function(json) {
-        var coordinates = json.features[0].geometry.coordinates;
-        for (var i in coordinates)
-        {
-            data.push([coordinates[i][0], coordinates[i][1]]);
-        }
-
-        d3.select('#chart')
-                .append("svg").attr("width", window.innerWidth).attr("height",window.innerHeight)
-                .datum(data).call(ex_chart);
-    });
+    d3.select('#chart')
+            .append("svg").attr("width", window.innerWidth).attr("height",window.innerHeight)
+            .datum(data).call(ex_chart);
 });
 
+
+ function long2tile(lon, zoom) { return (Math.floor((lon+180)/360*Math.pow(2,zoom))); }
+ function lat2tile(lat, zoom)
+ {
+    return (Math.floor((1-Math.log(Math.tan(lat*Math.PI/180) + 1/Math.cos(lat*Math.PI/180))/Math.PI)/2 *Math.pow(2,zoom)));
+ }
 
 
 function example() {
     var svg;
-    var margin = {
-        top: 60,
-        bottom: 80,
-        left: 60,
-        right: 0
-    };
-    var width = 1000;
-    var height = 800;
+//    var margin = {
+//        top: 60,
+//        bottom: 80,
+//        left: 60,
+//        right: 0
+//    };
+//    var width = 1000;
+//    var height = 800;
     var xaxis = d3.svg.axis();
     var yaxis = d3.svg.axis();
     var xscale = d3.scale.linear();
     var yscale = d3.scale.linear();
+//    var yscale = d3.scale.log()
+//        .base(10)
+//        .domain([Math.exp(0), Math.exp(1)]);
     var zoomable = true;
 
     var xyzoom = d3.behavior.zoom()
@@ -66,19 +87,19 @@ function example() {
             g.append("defs").append("clipPath")
                     .attr("id", "clip")
                     .append("rect")
-                    .attr("width", width - margin.left - margin.right)
-                    .attr("height", height - margin.top - margin.bottom);
+                    .attr("width", plot_width - margin.left - margin.right)
+                    .attr("height", plot_height - margin.top - margin.bottom);
 
             g.append("svg:rect")
                     .attr("class", "border")
-                    .attr("width", width - margin.left - margin.right)
-                    .attr("height", height - margin.top - margin.bottom)
+                    .attr("width", plot_width - margin.left - margin.right)
+                    .attr("height", plot_height - margin.top - margin.bottom)
                     .style("stroke", "black")
                     .style("fill", "none");
 
             g.append("g")
                     .attr("class", "x axis")
-                    .attr("transform", "translate(" + 0 + "," + (height - margin.top - margin.bottom) + ")");
+                    .attr("transform", "translate(" + 0 + "," + (plot_height - margin.top - margin.bottom) + ")");
 
             g.append("g")
                     .attr("class", "y axis");
@@ -87,38 +108,33 @@ function example() {
                     .attr("class", "scatter")
                     .attr("clip-path", "url(#clip)");
 
-            g.append("g")
-                    .attr("class", "line")
-                    .attr("clip-path", "url(#clip)");
-
-            g.append("svg:rect")
-                    .attr("class", "zoom xy box")
-                    .attr("width", width - margin.left - margin.right)
-                    .attr("height", height - margin.top - margin.bottom)
-                    .style("visibility", "hidden")
-                    .attr("pointer-events", "all")
-                    .call(xyzoom);
-
             g.append("path")
                     .attr("class", "line")
                     .attr("clip-path", "url(#clip)")
-                    .attr("width", width - margin.left - margin.right)
-                    .attr("height", height - margin.top - margin.bottom);
+                    .attr("width", plot_width - margin.left - margin.right)
+                    .attr("height", plot_height - margin.top - margin.bottom);
 
-            var pathline = svg.select("path.line");
-            pathline.attr("d", valueline(data));
+            g.append("svg:rect")
+                    .attr("class", "zoom xy box")
+                    .attr("width", plot_width - margin.left - margin.right)
+                    .attr("height", plot_height - margin.top - margin.bottom)
+                    .style("visibility", "hidden")
+                    .attr("pointer-events", "all");
+
+//            var pathline = svg.select("path.line");
+//            pathline.attr("d", valueline(data));
 
             // Update the x-axis
-            xscale.domain(d3.extent(data, function(d) { return d[0]; }));
-            xscale.range([0, width - margin.left - margin.right]);
+            xscale.domain(d3.extent(data, function(d) { return d[1]; }));
+            xscale.range([0, plot_width - margin.left - margin.right]);
 
             xaxis.scale(xscale)
                     .orient('bottom')
                     .tickPadding(10);
 
             // Update the y-scale.
-            yscale.domain(d3.extent(data, function(d) { return d[1]; }))
-            yscale.range([height - margin.top - margin.bottom, 0]);
+            yscale.domain(d3.extent(data, function(d) { return d[0]; }))
+            yscale.range([plot_height - margin.top - margin.bottom, 0]);
 
             yaxis.scale(yscale)
                     .orient('left')
@@ -130,42 +146,14 @@ function example() {
         return chart;
     }
 
-
     function update() {
-        console.log('update begin');
+//        console.log('update begin');
         var gs = svg.select("g.scatter");
         var circle = gs.selectAll("circle");
-        console.log(circle);
 
-        if (hasTile)
-        {
-            update_path();
-            update_circles(circle);
-            svg.select('g.x.axis').call(xaxis);
-            svg.select('g.y.axis').call(yaxis);
-        } else {
-            hasTile = true;
-            d3.json('out1.geojson', function(json) {
-                data = [];
-                var coordinates = json.features[0].geometry.coordinates;
-                for (var i in coordinates)
-                {
-                    data.push([coordinates[i][0], coordinates[i][1]]);
-                }
-
-                d3.json('out2.geojson', function(json) {
-                    var coordinates = json.features[0].geometry.coordinates;
-                    for (var i in coordinates)
-                    {
-                        data.push([coordinates[i][0], coordinates[i][1]]);
-                    }
-
-                    update_path();
-                    update_circles(circle);
-                });
-            });
-        }
-        console.log('update end');
+//        update_path();
+        update_circles(circle);
+//        console.log('update end');
     }
 
     function update_path() {
@@ -176,11 +164,10 @@ function example() {
     function update_circles(circle) {
         circle = circle = circle.data(data, function(d) { return d; });
         circle.enter().append("svg:circle")
-            .attr("class", "points")
-            .style("fill", "steelblue")
+            .attr("class", "marker")
             .attr("cx", function(d) {return X(d);})
             .attr("cy", function(d) {return Y(d);})
-            .attr("r", 4);
+            .attr("r", 1);
 
         circle.attr("cx", function(d) { return X(d); })
               .attr("cy", function(d) { return Y(d); });
@@ -188,31 +175,106 @@ function example() {
         circle.exit().remove();
     }
 
+    var zoomlevel = 1;
+
     function zoom_update() {
         xyzoom = d3.behavior.zoom()
-                .x(xscale)
-                .y(yscale)
-                .on("zoom", zoomable ? draw : null);
+            .x(xscale)
+            .y(yscale)
+            .on("zoom", zoomable ? draw : null);
 
+
+        var xmin = Math.max(-178.0, xscale.domain()[0]);
+        var xmax = Math.min(178.0, xscale.domain()[1]);
+        var ymin = Math.max(-84, yscale.domain()[0]);
+        var ymax = Math.min(84, yscale.domain()[1]);
+//        console.log(ymin + ", " + ymax);
+//        console.log(xmin + ", " + xmax);
+//        console.log("tilenr_x_min: " + tilenr_x_min);
+//        console.log("tilenr_x_max: " + tilenr_x_max);
+//        console.log("ymax", ymax);
+//        console.log("tilenr_y_min: " + tilenr_y_min);
+//        console.log("tilenr_y_max: " + tilenr_y_max);
+//        console.log("ntilesy:", ntilesy);
+//        console.log("ntilesx:", ntilesx);
+        zoomlevel = Math.min(8, Math.floor(200/Math.abs(xmax-xmin)));
+
+        var tilenr_x_min = long2tile(xmin, zoomlevel);
+        var tilenr_x_max = long2tile(xmax, zoomlevel);
+        var tilenr_y_min = lat2tile(ymin, zoomlevel);
+        var tilenr_y_max = lat2tile(ymax, zoomlevel);
+        var ntilesx = Math.abs(tilenr_x_max - tilenr_x_min) + 1;
+        var ntilesy = Math.abs(tilenr_y_max - tilenr_y_min) + 1;
+        var ntiles = ntilesx * ntilesy;
+        console.log("ntiles:", ntiles);
+//        if (ntiles > 20 && zoomlevel > 1) {
+//            zoomlevel = zoomlevel - 1;
+//        }
+//        if (ntiles < 4) {
+//            zoomlevel = zoomlevel + 1;
+//        }
+        console.log("zoomlevel:", zoomlevel);
+        var lower_tilenrx = Math.min(tilenr_x_max, tilenr_x_min);
+        var upper_tilenrx = Math.max(tilenr_x_max, tilenr_x_min);
+        var lower_tilenry = Math.min(tilenr_y_max, tilenr_y_min);
+        var upper_tilenry = Math.max(tilenr_y_max, tilenr_y_min);
+//        console.log("x", lower_tilenrx, upper_tilenrx);
+//        console.log("y", lower_tilenry, upper_tilenry);
+        for (var i = lower_tilenrx-1; i <= upper_tilenrx+1; ++i) {
+            for (var j = lower_tilenry-1; j <= upper_tilenry+1; ++j) {
+                var tile_filename = 'tiles/' + zoomlevel + '/' + i + '/' +  j + '.geojson';
+                if (tile_filename in tiles) {
+                    var coords = tiles[tile_filename];
+                    for (var k in coords) {
+                        data.push([coords[k][1], coords[k][0]]);
+                    }
+                } else {
+                    load_tile(tile_filename, zoomlevel);
+                }
+            }
+        }
+
+        update();
         svg.select('rect.zoom.xy.box').call(xyzoom);
     }
 
+    function load_tile(tile_filename, zoom_at_start) {
+        d3.json(tile_filename, function(json) {
+            if (!json) {
+                tiles[tile_filename] = null;
+                return;
+            }
+//            console.log("FILE FOUND!", tile_filename);
+            var coordinates = json.features[0].geometry.coordinates;
+            tiles[tile_filename] = coordinates;
+            if (zoomlevel != zoom_at_start) {
+                return;
+            }
+            for (var i in coordinates) {
+                data.push([coordinates[i][1], coordinates[i][0]]);
+            }
+            update();
+        });
+    }
+
     function draw() {
+//        console.log('draw');
+        data = [];
         svg.select('g.x.axis').call(xaxis);
         svg.select('g.y.axis').call(yaxis);
-
-        update();
         zoom_update();
+//        update();
+//        svg.attr("transform", "translate(" + xyzoom.translate() + ")scale(" + xyzoom.scale() + ")");
     }
 
     // X value to scale
     function X(d) {
-        return xscale(d[0]);
+        return xscale(d[1]);
     }
 
     // Y value to scale
     function Y(d) {
-        return yscale(d[1]);
+        return yscale(d[0]);
     }
 
     chart.zoom = function (_){
