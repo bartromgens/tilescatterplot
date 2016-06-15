@@ -30,7 +30,7 @@ d3.json(filename, function(json) {
     var coordinates = json.features[0].geometry.coordinates;
     for (var i in coordinates)
     {
-        data.push([coordinates[i][1], coordinates[i][0]]);
+        data.push([coordinates[i][0], coordinates[i][1]+90.01]);
     }
 
     d3.select('#chart')
@@ -127,7 +127,7 @@ function example() {
 //            pathline.attr("d", valueline(data));
 
             // Update the x-axis
-            xscale.domain(d3.extent(data, function(d) { return d[1]; }));
+            xscale.domain(d3.extent(data, function(d) { return d[0]; }));
             xscale.range([0, plot_width - margin.left - margin.right]);
 
             xaxis.scale(xscale)
@@ -135,7 +135,7 @@ function example() {
                     .tickPadding(10);
 
             // Update the y-scale.
-            yscale.domain(d3.extent(data, function(d) { return d[0]; }))
+            yscale.domain(d3.extent(data, function(d) { return d[1]; }))
             yscale.range([plot_height - margin.top - margin.bottom, 0]);
 
             yaxis.scale(yscale)
@@ -182,8 +182,8 @@ function example() {
     function zoom_update() {
         var xmin = Math.max(-178.0, xscale.domain()[0]);
         var xmax = Math.min(178.0, xscale.domain()[1]);
-        var ymin = Math.max(-84.0, yscale.domain()[0]);
-        var ymax = Math.min(84.0, yscale.domain()[1]);
+        var ymin = Math.max(2, yscale.domain()[0]);
+        var ymax = Math.min(178.0, yscale.domain()[1]);
 //        console.log(ymin + ", " + ymax);
 //        console.log(xmin + ", " + xmax);
 //        console.log("tilenr_x_min: " + tilenr_x_min);
@@ -206,8 +206,8 @@ function example() {
 
         var tilenr_x_min = long2tile(xmin, zoomlevel);
         var tilenr_x_max = long2tile(xmax, zoomlevel);
-        var tilenr_y_min = lat2tile(ymin, zoomlevel);
-        var tilenr_y_max = lat2tile(ymax, zoomlevel);
+        var tilenr_y_min = lat2tile(ymin - 90.0, zoomlevel);
+        var tilenr_y_max = lat2tile(ymax - 90.0, zoomlevel);
         var ntilesx = Math.abs(tilenr_x_max - tilenr_x_min) + 1;
         var ntilesy = Math.abs(tilenr_y_max - tilenr_y_min) + 1;
         var ntiles = ntilesx * ntilesy;
@@ -255,14 +255,14 @@ function example() {
 
     function add_line(line) {
         for (var i in line) {
-            data.push([line[i][1], line[i][0]]);
+            data.push([line[i][0], line[i][1]+90.01]);
         }
     }
 
     function add_multi_line(line_segments) {
         for (var i in line_segments) {
             for (var j in line_segments[i]) {
-                data.push([line_segments[i][j][1], line_segments[i][j][0]]);
+                data.push([line_segments[i][j][0], line_segments[i][j][1]+90.01]);
             }
         }
     }
@@ -302,12 +302,12 @@ function example() {
 
     // X value to scale
     function X(d) {
-        return xscale(d[1]);
+        return xscale(d[0]);
     }
 
     // Y value to scale
     function Y(d) {
-        return yscale(d[0]);
+        return yscale(d[1]);
     }
 
     chart.zoom = function (_){
