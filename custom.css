@@ -1,0 +1,24 @@
+html, body {
+    height:100%;
+}
+
+.marker {
+    fill: white;
+    stroke: steelblue;
+    stroke-width: 2;
+    shape-rendering: geometricPrecision;
+}
+
+.axis path, .axis line {
+    fill: none;
+    stroke: #000;
+    shape-rendering: crispEdges;
+}
+
+.tick text{
+    font-size: 1em;
+}
+
+.tick line{
+    opacity: 0.2;
+}
