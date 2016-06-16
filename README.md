@@ -4,6 +4,10 @@ An interactive d3.js scatter plot that loads data from tiles while zooming and p
 
 This is a small project created while learning javascript and d3.js.
 
+#### Demo
+
+**[tilescatterplot.romgens.com](http://tilescatterplot.romgens.com)**
+
 #### Features
  - plot huge point-data sets via pre-rendered tiles
  - scatter plot
