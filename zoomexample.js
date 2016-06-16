@@ -24,9 +24,12 @@ var data = [];
 var hasTile = true;
 var tiles = {};
 var tiles_current = [];
+//var time_format = d3.time.format("%I:%M %p %a %Y");
 
 var scale_fac_y = 1.0;
 var offset_y = 1.0;
+var scale_fac_x = 1.0;
+var offset_x = 1.0;
 
 var filename = 'out.geojson';
 
@@ -34,10 +37,15 @@ d3.json(filename, function(json) {
     var coordinates = json.features[0].geometry.coordinates;
     scale_fac_y = json.features[0].properties.scale_fac_y;
     offset_y = json.features[0].properties.offset_y;
+    scale_fac_x = json.features[0].properties.scale_fac_x;
+    offset_x = json.features[0].properties.offset_x;
+    console.log(scale_fac_x);
+    console.log(offset_x);
     for (var i in coordinates)
     {
-        data.push([coordinates[i][0], (coordinates[i][1]+45)*scale_fac_y+offset_y]);
+        data.push([coordinates[i][0]*scale_fac_x+offset_x, (coordinates[i][1]+45)*scale_fac_y+offset_y]);
     }
+    data.forEach(function(d) { d.time = new Date(d[0]*1000); });
 
     d3.select('#chart')
             .append("svg").attr("width", window.innerWidth).attr("height",window.innerHeight)
@@ -58,8 +66,9 @@ function example() {
     var svg;
     var xaxis = d3.svg.axis();
     var yaxis = d3.svg.axis();
-    var xscale = d3.scale.linear();
-    var yscale = d3.scale.linear();
+    var xscale = d3.time.scale();
+//    xscale.tickFormat(time_format);
+//    var yscale = d3.scale.linear();
     var yscale = d3.scale.log().base(10);
     var zoomable = true;
 
@@ -123,7 +132,7 @@ function example() {
                     .attr("pointer-events", "all");
 
             // Update the x-axis
-            xscale.domain(d3.extent(data, function(d) { return d[0]; }));
+            xscale.domain(d3.extent(data, function(d) { return d.time; }));
             xscale.range([0, plot_width - margin.left - margin.right]);
 
             xaxis.scale(xscale)
@@ -153,6 +162,7 @@ function example() {
 //        console.log('update begin');
         var gs = svg.select("g.scatter");
         var circle = gs.selectAll("circle");
+        data.forEach(function(d) { d.time = new Date(d[0] * 1000); });  // from posix seconds to ms
 //        update_path();
         update_circles(circle);
 //        console.log('update end');
@@ -189,6 +199,7 @@ function example() {
     }
 
     var get_tile_filenames = function(lon_min, lon_max, lat_min, lat_max) {
+//        console.log(lon_min, lon_max, lat_min, lat_max);
         var tilenr_x_min = long2tile(lon_min, zoomlevel);
         var tilenr_x_max = long2tile(lon_max, zoomlevel);
         var tilenr_y_min = lat2tile(lat_min, zoomlevel);
@@ -196,6 +207,11 @@ function example() {
         var ntilesx = Math.abs(tilenr_x_max - tilenr_x_min) + 1;
         var ntilesy = Math.abs(tilenr_y_max - tilenr_y_min) + 1;
         var ntiles = ntilesx * ntilesy;
+        if (ntiles > 1000)
+        {
+            console.log('ERROR', 'too many tiles ' , ntiles);
+            return [];
+        }
 
         var lower_tilenrx = Math.min(tilenr_x_max, tilenr_x_min);
         var upper_tilenrx = Math.max(tilenr_x_max, tilenr_x_min);
@@ -218,20 +234,23 @@ function example() {
             .on("zoom", zoomable ? draw : null);
         svg.select('rect.zoom.xy.box').call(xyzoom);
 
-        var xmin = xscale.domain()[0];
-        var xmax = xscale.domain()[1];
+        var xmin = Number(xscale.domain()[0])/1000;
+        var xmax = Number(xscale.domain()[1])/1000;
         var ymin = yscale.domain()[0];
         var ymax = yscale.domain()[1];
 
-        var lon_min = Math.max(-178.0, xmin);
-        var lon_max = Math.min(178.0, xmax);
+        var lon_min = (xmin-offset_x)/scale_fac_x;
+        var lon_max = (xmax-offset_x)/scale_fac_x;
         var lat_min = (ymin-offset_y)/scale_fac_y - 45.0;
         var lat_max = (ymax-offset_y)/scale_fac_y - 45.0;
+        lon_min = Math.max(-178.0, lon_min);
+        lon_max = Math.min(178.0, lon_max);
         lat_min = Math.max(-84.0, lat_min);
         lat_max = Math.min(84.0, lat_max);
 
         zoomlevel = calc_zoom_level(lon_min, lon_max, lat_min, lat_max);
-        var tile_filenames = get_tile_filenames(lon_min, lon_max, lat_min, lat_max)
+        var tile_filenames = [];
+        var tile_filenames = get_tile_filenames(lon_min, lon_max, lat_min, lat_max);
 
         var all_in_buffer = true;
         for (var i in tile_filenames) {
@@ -271,14 +290,14 @@ function example() {
 
     function add_line(line) {
         for (var i in line) {
-            data.push([line[i][0], (line[i][1]+45)*scale_fac_y+offset_y]);
+            data.push([line[i][0]*scale_fac_x+offset_x, (line[i][1]+45)*scale_fac_y+offset_y]);
         }
     }
 
     function add_multi_line(line_segments) {
         for (var i in line_segments) {
             for (var j in line_segments[i]) {
-                data.push([line_segments[i][j][0], (line_segments[i][j][1]+45)*scale_fac_y+offset_y]);
+                data.push([line_segments[i][j][0]*scale_fac_x+offset_x, (line_segments[i][j][1]+45)*scale_fac_y+offset_y]);
             }
         }
     }
@@ -292,6 +311,8 @@ function example() {
             console.log("FILE FOUND!", tile_filename);
             var coordinates = json.features[0].geometry.coordinates;
             var type = json.features[0].geometry.type;
+            scale_fac_x = json.features[0].properties.scale_fac_x;
+            offset_x = json.features[0].properties.offset_x;
             scale_fac_y = json.features[0].properties.scale_fac_y;
             offset_y = json.features[0].properties.offset_y;
             tiles[tile_filename] = json.features[0].geometry;
@@ -317,7 +338,7 @@ function example() {
 
     // X value to scale
     function X(d) {
-        return xscale(d[0]);
+        return xscale(d.time);
     }
 
     // Y value to scale
