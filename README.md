@@ -1,6 +1,6 @@
 ## tilescatterplot
 
-A d3.js scatter plot that loads data from tiles while zooming and panning. Like a slippy map, but for scatter plots.
+An interactive d3.js scatter plot that loads data from tiles while zooming and panning. Like a slippy map, but for scatter plots.
 
 This is a small project created while learning javascript and d3.js.
 
