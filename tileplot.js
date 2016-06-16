@@ -102,44 +102,44 @@ function example() {
             svg = d3.select(this).selectAll('svg').data([data]);
             svg.enter().append('svg');
             var g = svg.append('g')
-                    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+                .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
             g.append("defs").append("clipPath")
-                    .attr("id", "clip")
-                    .append("rect")
-                    .attr("width", plot_width - margin.left - margin.right)
-                    .attr("height", plot_height - margin.top - margin.bottom);
+                .attr("id", "clip")
+                .append("rect")
+                .attr("width", plot_width - margin.left - margin.right)
+                .attr("height", plot_height - margin.top - margin.bottom);
 
             g.append("svg:rect")
-                    .attr("class", "border")
-                    .attr("width", plot_width - margin.left - margin.right)
-                    .attr("height", plot_height - margin.top - margin.bottom)
-                    .style("stroke", "black")
-                    .style("fill", "none");
+                .attr("class", "border")
+                .attr("width", plot_width - margin.left - margin.right)
+                .attr("height", plot_height - margin.top - margin.bottom)
+                .style("stroke", "black")
+                .style("fill", "none");
 
             g.append("g")
-                    .attr("class", "x axis")
-                    .attr("transform", "translate(" + 0 + "," + (plot_height - margin.top - margin.bottom) + ")");
+                .attr("class", "x axis")
+                .attr("transform", "translate(" + 0 + "," + (plot_height - margin.top - margin.bottom) + ")");
 
             g.append("g")
-                    .attr("class", "y axis");
+                .attr("class", "y axis");
 
             g.append("g")
-                    .attr("class", "scatter")
-                    .attr("clip-path", "url(#clip)");
+                .attr("class", "scatter")
+                .attr("clip-path", "url(#clip)");
 
             g.append("path")
-                    .attr("class", "line")
-                    .attr("clip-path", "url(#clip)")
-                    .attr("width", plot_width - margin.left - margin.right)
-                    .attr("height", plot_height - margin.top - margin.bottom);
+                .attr("class", "line")
+                .attr("clip-path", "url(#clip)")
+                .attr("width", plot_width - margin.left - margin.right)
+                .attr("height", plot_height - margin.top - margin.bottom);
 
             g.append("svg:rect")
-                    .attr("class", "zoom xy box")
-                    .attr("width", plot_width - margin.left - margin.right)
-                    .attr("height", plot_height - margin.top - margin.bottom)
-                    .style("visibility", "hidden")
-                    .attr("pointer-events", "all");
+                .attr("class", "zoom xy box")
+                .attr("width", plot_width - margin.left - margin.right)
+                .attr("height", plot_height - margin.top - margin.bottom)
+                .style("visibility", "hidden")
+                .attr("pointer-events", "all");
 
             g.append("svg:rect")
                 .attr("class", "zoom x box")
@@ -164,22 +164,22 @@ function example() {
             xscale.range([0, plot_width - margin.left - margin.right]);
 
             xaxis.scale(xscale)
-                    .orient('bottom')
-                    .ticks(n_ticks_x)
+                .orient('bottom')
+                .ticks(n_ticks_x)
 //                    .tickFormat(time_format)
-                    .tickPadding(10);
+                .tickPadding(10);
 
             // Update the y-scale.
             yscale.domain(d3.extent(data, function(d) { return d[1]; }))
             yscale.range([plot_height - margin.top - margin.bottom, 0]);
 
             yaxis.scale(yscale)
-                    .orient('left')
-                    .ticks(15, "d")
-                    .tickSize(6, 0)
-                    .innerTickSize(-width)
-                    .outerTickSize(0)
-                    .tickPadding(10);
+                .orient('left')
+                .ticks(15, "d")
+                .tickSize(6, 0)
+                .innerTickSize(-width)
+                .outerTickSize(0)
+                .tickPadding(10);
 //            yaxis.tickValues([0, 1, 2, 3, 5, 7, 10, 20, 40, 100, 150, 200, 300, 400]);
 
             draw();
