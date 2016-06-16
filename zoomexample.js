@@ -63,6 +63,9 @@ function example() {
     var yscale = d3.scale.log().base(10);
     var zoomable = true;
 
+    var zoomlevel = 0;
+    var zoomlevel_previous = zoomlevel;
+
     var xyzoom = d3.behavior.zoom()
             .x(xscale)
             .y(yscale)
@@ -135,6 +138,8 @@ function example() {
                     .orient('left')
                     .ticks(15, "d")
                     .tickSize(6, 0)
+                    .innerTickSize(-width)
+                    .outerTickSize(0)
                     .tickPadding(10);
 //            yaxis.tickValues([0, 1, 2, 3, 5, 7, 10, 20, 40, 100, 150, 200, 300, 400]);
 
@@ -172,36 +177,18 @@ function example() {
         circle.exit().remove();
     }
 
-    var zoomlevel = 0;
-    var zoomlevel_previous = zoomlevel;
+    function calc_zoom_level(lon_min, lon_max, lat_min, lat_max) {
+        var range_lat = Math.abs(lat_max-lat_min);
+        var range_lon = Math.abs(lon_max-lon_min);
+        var area = range_lat * range_lon;
+        var zoomrequest = 360*180/area/10;
+        var zoomnew = Math.floor(Math.log(zoomrequest+1));
+        zoomnew = Math.min(9, zoomnew);
+        zoomnew = Math.max(1, zoomnew);
+        return zoomnew;
+    }
 
-    function zoom_update() {
-        xyzoom = d3.behavior.zoom()
-            .x(xscale)
-            .y(yscale)
-            .on("zoom", zoomable ? draw : null);
-        svg.select('rect.zoom.xy.box').call(xyzoom);
-
-        var xmin = xscale.domain()[0];
-        var xmax = xscale.domain()[1];
-        var ymin = yscale.domain()[0];
-        var ymax = yscale.domain()[1];
-
-        var rangex = Math.abs(xmax-xmin);
-        var rangey = Math.abs(ymax-ymin);
-        var area = rangex * rangey;
-        var zoomrequest = 1000*200/area/10;
-        zoomlevel = Math.floor(Math.log(zoomrequest+1));
-        zoomlevel = Math.min(9, zoomlevel);
-        zoomlevel = Math.max(1, zoomlevel);
-
-        var lon_min = Math.max(-178.0, xmin);
-        var lon_max = Math.min(178.0, xmax);
-        var lat_min = (ymin-offset_y)/scale_fac_y - 45.0;
-        var lat_max = (ymax-offset_y)/scale_fac_y - 45.0;
-        lat_min = Math.max(-84.0, lat_min);
-        lat_max = Math.min(84.0, lat_max);
-
+    var get_tile_filenames = function(lon_min, lon_max, lat_min, lat_max) {
         var tilenr_x_min = long2tile(lon_min, zoomlevel);
         var tilenr_x_max = long2tile(lon_max, zoomlevel);
         var tilenr_y_min = lat2tile(lat_min, zoomlevel);
@@ -221,15 +208,39 @@ function example() {
                 tile_filenames.push('tiles/' + zoomlevel + '/' + i + '/' +  j + '.geojson');
             }
         }
+        return tile_filenames;
+    }
+
+    function zoom_update() {
+        xyzoom = d3.behavior.zoom()
+            .x(xscale)
+            .y(yscale)
+            .on("zoom", zoomable ? draw : null);
+        svg.select('rect.zoom.xy.box').call(xyzoom);
+
+        var xmin = xscale.domain()[0];
+        var xmax = xscale.domain()[1];
+        var ymin = yscale.domain()[0];
+        var ymax = yscale.domain()[1];
+
+        var lon_min = Math.max(-178.0, xmin);
+        var lon_max = Math.min(178.0, xmax);
+        var lat_min = (ymin-offset_y)/scale_fac_y - 45.0;
+        var lat_max = (ymax-offset_y)/scale_fac_y - 45.0;
+        lat_min = Math.max(-84.0, lat_min);
+        lat_max = Math.min(84.0, lat_max);
+
+        zoomlevel = calc_zoom_level(lon_min, lon_max, lat_min, lat_max);
+        var tile_filenames = get_tile_filenames(lon_min, lon_max, lat_min, lat_max)
 
         var all_in_buffer = true;
         for (var i in tile_filenames) {
             if (tiles_current.indexOf(tile_filenames[i]) == -1) {
-                console.log(tile_filenames[i], 'is new in buffer')
                 all_in_buffer = false;
                 break;
             }
         }
+
         if (!all_in_buffer || zoomlevel != zoomlevel_previous) {
             console.log('DATA UPDATE');
             zoomlevel_previous = zoomlevel;
@@ -255,7 +266,7 @@ function example() {
         }
 
         update();
-        console.log("ntiles:", ntiles, "zoomlevel:", zoomlevel, "points:", data.length/2);
+        console.log("ntiles:", tile_filenames.length, "zoomlevel:", zoomlevel, "points:", data.length/2);
     }
 
     function add_line(line) {
