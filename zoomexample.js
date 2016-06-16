@@ -29,7 +29,7 @@ var scale_fac_y = 1.0;
 var offset_y = 1.0;
 
 var filename = 'out.geojson';
-//filename = 'tiles/6/16/34.geojson';
+
 d3.json(filename, function(json) {
     var coordinates = json.features[0].geometry.coordinates;
     scale_fac_y = json.features[0].properties.scale_fac_y;
@@ -56,21 +56,11 @@ function lat2tile(lat, zoom) {
 
 function example() {
     var svg;
-//    var margin = {
-//        top: 60,
-//        bottom: 80,
-//        left: 60,
-//        right: 0
-//    };
-//    var width = 1000;
-//    var height = 800;
     var xaxis = d3.svg.axis();
     var yaxis = d3.svg.axis();
     var xscale = d3.scale.linear();
     var yscale = d3.scale.linear();
-    var yscale = d3.scale.log()
-        .base(10)
-//        .domain([Math.exp(0), Math.exp(10)]);
+    var yscale = d3.scale.log().base(10);
     var zoomable = true;
 
     var xyzoom = d3.behavior.zoom()
@@ -129,9 +119,6 @@ function example() {
                     .style("visibility", "hidden")
                     .attr("pointer-events", "all");
 
-//            var pathline = svg.select("path.line");
-//            pathline.attr("d", valueline(data));
-
             // Update the x-axis
             xscale.domain(d3.extent(data, function(d) { return d[0]; }));
             xscale.range([0, plot_width - margin.left - margin.right]);
@@ -146,7 +133,10 @@ function example() {
 
             yaxis.scale(yscale)
                     .orient('left')
+                    .ticks(15, "d")
+                    .tickSize(6, 0)
                     .tickPadding(10);
+//            yaxis.tickValues([0, 1, 2, 3, 5, 7, 10, 20, 40, 100, 150, 200, 300, 400]);
 
             draw();
         });
@@ -158,7 +148,6 @@ function example() {
 //        console.log('update begin');
         var gs = svg.select("g.scatter");
         var circle = gs.selectAll("circle");
-
 //        update_path();
         update_circles(circle);
 //        console.log('update end');
@@ -197,25 +186,14 @@ function example() {
         var xmax = xscale.domain()[1];
         var ymin = yscale.domain()[0];
         var ymax = yscale.domain()[1];
-//        console.log(ymin + ", " + ymax);
-//        console.log(xmin + ", " + xmax);
-//        console.log("tilenr_x_min: " + tilenr_x_min);
-//        console.log("tilenr_x_max: " + tilenr_x_max);
-//        console.log("ymax", ymax);
-//        console.log("tilenr_y_min: " + tilenr_y_min);
-//        console.log("tilenr_y_max: " + tilenr_y_max);
-//        console.log("ntilesy:", ntilesy);
-//        console.log("ntilesx:", ntilesx);
+
         var rangex = Math.abs(xmax-xmin);
         var rangey = Math.abs(ymax-ymin);
         var area = rangex * rangey;
-//        zoomlevel = Math.min(8, Math.floor(Math.log(36/(xmax-xmin)+1, 20)*4));
-        var zoomrequest = 360*180/area/20;
-//        var zoomrequest = 360/rangex;
-//        console.log(zoomrequest);
+        var zoomrequest = 1000*200/area/10;
         zoomlevel = Math.floor(Math.log(zoomrequest+1));
         zoomlevel = Math.min(9, zoomlevel);
-        zoomlevel = Math.max(0, zoomlevel);
+        zoomlevel = Math.max(1, zoomlevel);
 
         var lon_min = Math.max(-178.0, xmin);
         var lon_max = Math.min(178.0, xmax);
@@ -223,7 +201,6 @@ function example() {
         var lat_max = (ymax-offset_y)/scale_fac_y - 45.0;
         lat_min = Math.max(-84.0, lat_min);
         lat_max = Math.min(84.0, lat_max);
-//        console.log(lat_min, lat_max);
 
         var tilenr_x_min = long2tile(lon_min, zoomlevel);
         var tilenr_x_max = long2tile(lon_max, zoomlevel);
@@ -232,19 +209,12 @@ function example() {
         var ntilesx = Math.abs(tilenr_x_max - tilenr_x_min) + 1;
         var ntilesy = Math.abs(tilenr_y_max - tilenr_y_min) + 1;
         var ntiles = ntilesx * ntilesy;
-//        if (ntiles > 12 && zoomlevel > 1) {
-//            zoomlevel = zoomlevel - 1;
-//        }
-//        if (ntiles < 4) {
-//            zoomlevel = zoomlevel + 1;
-//        }
-//        if (data.length > 5000) {
-//            zoomlevel = zoomlevel - 1;
-//        }
+
         var lower_tilenrx = Math.min(tilenr_x_max, tilenr_x_min);
         var upper_tilenrx = Math.max(tilenr_x_max, tilenr_x_min);
         var lower_tilenry = Math.min(tilenr_y_max, tilenr_y_min);
         var upper_tilenry = Math.max(tilenr_y_max, tilenr_y_min);
+
         var tile_filenames = [];
         for (var i = lower_tilenrx; i <= upper_tilenrx; ++i) {
             for (var j = lower_tilenry; j <= upper_tilenry; ++j) {
@@ -329,13 +299,9 @@ function example() {
     }
 
     function draw() {
-//        console.log('draw');
         svg.select('g.x.axis').call(xaxis);
         svg.select('g.y.axis').call(yaxis);
         zoom_update();
-//        console.log('points', data.length);
-//        update();
-//        svg.attr("transform", "translate(" + xyzoom.translate() + ")scale(" + xyzoom.scale() + ")");
     }
 
     // X value to scale
