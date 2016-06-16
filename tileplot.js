@@ -15,7 +15,7 @@ Array.matrix = function(numrows, numcols, initial) {
 var plot_width = parseInt(d3.select("body").select("#chart").style('width'), 10);
 var margin = {top: 60, right: 30, bottom: 50, left: 60};
 var width = plot_width - margin.left - margin.right;
-var height = Math.min(plot_width - margin.top - margin.bottom, 600);
+var height = Math.min(plot_width - margin.top - margin.bottom, 700);
 var plot_height = height + margin.top + margin.bottom;
 
 var ex_chart = example().zoom(true);
@@ -24,7 +24,9 @@ var data = [];
 var hasTile = true;
 var tiles = {};
 var tiles_current = [];
-//var time_format = d3.time.format("%I:%M %p %a %Y");
+
+//var time_format = d3.time.format("%e %b %y");
+var n_ticks_x = 10;
 
 var scale_fac_y = 1.0;
 var offset_y = 1.0;
@@ -76,14 +78,22 @@ function example() {
     var zoomlevel_previous = zoomlevel;
 
     var xyzoom = d3.behavior.zoom()
-            .x(xscale)
-            .y(yscale)
-            .on("zoom", zoomable ? draw : null);
+        .x(xscale)
+        .y(yscale)
+        .on("zoom", zoomable ? draw : null);
+
+    var xzoom = d3.behavior.zoom()
+        .x(xscale)
+        .on("zoom", zoomable ? draw : null);
+
+    var yzoom = d3.behavior.zoom()
+        .y(yscale)
+        .on("zoom", zoomable ? draw : null);
 
     // Define the line
     var valueline = d3.svg.line()
-            .x(function(d) { return X(d); })
-            .y(function(d) { return Y(d); });
+        .x(function(d) { return X(d); })
+        .y(function(d) { return Y(d); });
 
     function chart(selection) {
         console.log('create chart');
@@ -131,12 +141,32 @@ function example() {
                     .style("visibility", "hidden")
                     .attr("pointer-events", "all");
 
+            g.append("svg:rect")
+                .attr("class", "zoom x box")
+                .attr("width", plot_width - margin.left - margin.right)
+                .attr("height", plot_height - margin.top - margin.bottom)
+                .attr("transform", "translate(" + 0 + "," + (plot_height - margin.top - margin.bottom) + ")")
+                .style("visibility", "hidden")
+                .attr("pointer-events", "all")
+                .call(xzoom);
+
+            g.append("svg:rect")
+                .attr("class", "zoom y box")
+                .attr("width", margin.left)
+                .attr("height", height - margin.top - margin.bottom)
+                .attr("transform", "translate(" + -margin.left + "," + 0 + ")")
+                .style("visibility", "hidden")
+                .attr("pointer-events", "all")
+                .call(yzoom);
+
             // Update the x-axis
             xscale.domain(d3.extent(data, function(d) { return d.time; }));
             xscale.range([0, plot_width - margin.left - margin.right]);
 
             xaxis.scale(xscale)
                     .orient('bottom')
+                    .ticks(n_ticks_x)
+//                    .tickFormat(time_format)
                     .tickPadding(10);
 
             // Update the y-scale.
@@ -232,7 +262,16 @@ function example() {
             .x(xscale)
             .y(yscale)
             .on("zoom", zoomable ? draw : null);
+        xzoom = d3.behavior.zoom()
+            .x(xscale)
+            .on("zoom", zoomable ? draw : null);
+        yzoom = d3.behavior.zoom()
+            .y(yscale)
+            .on("zoom", zoomable ? draw : null);
+
         svg.select('rect.zoom.xy.box').call(xyzoom);
+        svg.select('rect.zoom.x.box').call(xzoom);
+        svg.select('rect.zoom.y.box').call(yzoom);
 
         var xmin = Number(xscale.domain()[0])/1000;
         var xmax = Number(xscale.domain()[1])/1000;
