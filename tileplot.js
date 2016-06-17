@@ -134,12 +134,18 @@ function example() {
                 .attr("width", plot_width - margin.left - margin.right)
                 .attr("height", plot_height - margin.top - margin.bottom);
 
+            var focus = svg.append("g")
+                .style("display", "none");
+
             g.append("svg:rect")
                 .attr("class", "zoom xy box")
                 .attr("width", plot_width - margin.left - margin.right)
                 .attr("height", plot_height - margin.top - margin.bottom)
                 .style("visibility", "hidden")
-                .attr("pointer-events", "all");
+                .attr("pointer-events", "all")
+                .on("mouseover", function() { focus.style("display", null); })
+                .on("mouseout", function() { focus.style("display", "none"); })
+                .on("mousemove", mousemove);
 
             g.append("svg:rect")
                 .attr("class", "zoom x box")
@@ -181,6 +187,51 @@ function example() {
                 .outerTickSize(0)
                 .tickPadding(10);
 //            yaxis.tickValues([0, 1, 2, 3, 5, 7, 10, 20, 40, 100, 150, 200, 300, 400]);
+
+            var bisectDate = d3.bisector(function(d) { return d.time; }).left;
+
+            function mousemove() {
+                console.log('mousemove');
+                var x0 = xscale.invert(d3.mouse(this)[0]);
+                var i = bisectDate(data, x0, 1);
+                if (i > 0 && i < data.length) {
+                    var d0 = data[i - 1];
+                    var d1 = data[i];
+                    var d = x0 - d0.time > d1.time - x0 ? d1 : d0;
+                } else { // mouse is outside the plot area, i is not valid
+                    var d = data[data.length-1];
+                }
+
+                focus.select("circle.y")
+                    .attr("transform",
+                          "translate(" + xscale(d.datetime) + "," +
+                                         xscale(d.y) + ")");
+
+                var formatDate = d3.time.format("%d %b %H:%M");
+
+                var tooltip_x = xscale(d.time) - 100;
+                var tooltip_y = xscale(d[1]) - 30;
+                var translate_str = "translate(" + tooltip_x + "," + tooltip_y + ")";
+
+                focus.select("text.y1")
+                    .attr("transform", translate_str)
+                    .text(Math.round(d[1]) + ' ' + 'meter');
+
+                focus.select("text.y2")
+                    .attr("transform", translate_str)
+                    .text(Math.round(d[1]) + ' ' + 'meter');
+
+                focus.select("text.y3")
+                    .attr("transform", translate_str)
+                    .text(formatDate(d.time));
+
+                focus.select("text.y4")
+                    .attr("transform", translate_str)
+                    .text(formatDate(d.time));
+
+                console.log(d.time);
+                console.log(d[1]);
+            }
 
             draw();
         });
