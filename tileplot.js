@@ -20,7 +20,7 @@ var plot_height = height + margin.top + margin.bottom;
 
 var ex_chart = example().zoom(true);
 
-var data = [];
+var data_points = [];
 var hasTile = true;
 var tiles = {};
 var tiles_current = [];
@@ -45,13 +45,15 @@ d3.json(filename, function(json) {
     console.log(offset_x);
     for (var i in coordinates)
     {
-        data.push([coordinates[i][0]*scale_fac_x+offset_x, (coordinates[i][1]+45)*scale_fac_y+offset_y]);
+        data_points.push([coordinates[i][0]*scale_fac_x+offset_x, (coordinates[i][1]+45)*scale_fac_y+offset_y]);
     }
-    data.forEach(function(d) { d.time = new Date(d[0]*1000); });
+    data_points.forEach(function(d) { d.time = new Date(d[0]*1000); });
 
     d3.select('#chart')
-            .append("svg").attr("width", window.innerWidth).attr("height",window.innerHeight)
-            .datum(data).call(ex_chart);
+        .append("svg")
+        .attr("width", window.innerWidth)
+        .attr("height",window.innerHeight)
+        .call(ex_chart);
 });
 
 
@@ -98,143 +100,178 @@ function example() {
     function chart(selection) {
         console.log('create chart');
         console.log(selection);
-        selection.each(function(data) {
-            svg = d3.select(this).selectAll('svg').data([data]);
-            svg.enter().append('svg');
-            var g = svg.append('g')
-                .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+        svg = selection.append('svg');
+        var g = svg.append('g')
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-            g.append("defs").append("clipPath")
-                .attr("id", "clip")
-                .append("rect")
-                .attr("width", plot_width - margin.left - margin.right)
-                .attr("height", plot_height - margin.top - margin.bottom);
+        g.append("defs").append("clipPath")
+            .attr("id", "clip")
+            .append("rect")
+            .attr("width", plot_width - margin.left - margin.right)
+            .attr("height", plot_height - margin.top - margin.bottom);
 
-            g.append("svg:rect")
-                .attr("class", "border")
-                .attr("width", plot_width - margin.left - margin.right)
-                .attr("height", plot_height - margin.top - margin.bottom)
-                .style("stroke", "black")
-                .style("fill", "none");
+        g.append("svg:rect")
+            .attr("class", "border")
+            .attr("width", plot_width - margin.left - margin.right)
+            .attr("height", plot_height - margin.top - margin.bottom)
+            .style("stroke", "black")
+            .style("fill", "none");
 
-            g.append("g")
-                .attr("class", "x axis")
-                .attr("transform", "translate(" + 0 + "," + (plot_height - margin.top - margin.bottom) + ")");
+        g.append("g")
+            .attr("class", "x axis")
+            .attr("transform", "translate(" + 0 + "," + (plot_height - margin.top - margin.bottom) + ")");
 
-            g.append("g")
-                .attr("class", "y axis");
+        g.append("g")
+            .attr("class", "y axis");
 
-            g.append("g")
-                .attr("class", "scatter")
-                .attr("clip-path", "url(#clip)");
+        g.append("g")
+            .attr("class", "scatter")
+            .attr("clip-path", "url(#clip)");
 
-            g.append("path")
-                .attr("class", "line")
-                .attr("clip-path", "url(#clip)")
-                .attr("width", plot_width - margin.left - margin.right)
-                .attr("height", plot_height - margin.top - margin.bottom);
+        g.append("path")
+            .attr("class", "line")
+            .attr("clip-path", "url(#clip)")
+            .attr("width", plot_width - margin.left - margin.right)
+            .attr("height", plot_height - margin.top - margin.bottom);
 
-            var focus = svg.append("g")
-                .style("display", "none");
+        var focus = g.append("g")
+            .style("display", "none");
 
-            g.append("svg:rect")
-                .attr("class", "zoom xy box")
-                .attr("width", plot_width - margin.left - margin.right)
-                .attr("height", plot_height - margin.top - margin.bottom)
-                .style("visibility", "hidden")
-                .attr("pointer-events", "all")
-                .on("mouseover", function() { focus.style("display", null); })
-                .on("mouseout", function() { focus.style("display", "none"); })
-                .on("mousemove", mousemove);
+        g.append("svg:rect")
+            .attr("class", "zoom xy box")
+            .attr("width", plot_width - margin.left - margin.right)
+            .attr("height", plot_height - margin.top - margin.bottom)
+            .style("visibility", "hidden")
+            .attr("pointer-events", "all")
+            .on("mouseover", function() { focus.style("display", null); })
+            .on("mouseout", function() { focus.style("display", "none"); })
+            .on("mousemove", mousemove);
 
-            g.append("svg:rect")
-                .attr("class", "zoom x box")
-                .attr("width", plot_width - margin.left - margin.right)
-                .attr("height", plot_height - margin.top - margin.bottom)
-                .attr("transform", "translate(" + 0 + "," + (plot_height - margin.top - margin.bottom) + ")")
-                .style("visibility", "hidden")
-                .attr("pointer-events", "all")
-                .call(xzoom);
+        g.append("svg:rect")
+            .attr("class", "zoom x box")
+            .attr("width", plot_width - margin.left - margin.right)
+            .attr("height", plot_height - margin.top - margin.bottom)
+            .attr("transform", "translate(" + 0 + "," + (plot_height - margin.top - margin.bottom) + ")")
+            .style("visibility", "hidden")
+            .attr("pointer-events", "all")
+            .call(xzoom);
 
-            g.append("svg:rect")
-                .attr("class", "zoom y box")
-                .attr("width", margin.left)
-                .attr("height", height - margin.top - margin.bottom)
-                .attr("transform", "translate(" + -margin.left + "," + 0 + ")")
-                .style("visibility", "hidden")
-                .attr("pointer-events", "all")
-                .call(yzoom);
+        g.append("svg:rect")
+            .attr("class", "zoom y box")
+            .attr("width", margin.left)
+            .attr("height", height - margin.top - margin.bottom)
+            .attr("transform", "translate(" + -margin.left + "," + 0 + ")")
+            .style("visibility", "hidden")
+            .attr("pointer-events", "all")
+            .call(yzoom);
 
-            // Update the x-axis
-            xscale.domain(d3.extent(data, function(d) { return d.time; }));
-            xscale.range([0, plot_width - margin.left - margin.right]);
+        // Update the x-axis
+        xscale.domain(d3.extent(data_points, function(d) { return d.time; }));
+        xscale.range([0, plot_width - margin.left - margin.right]);
 
-            xaxis.scale(xscale)
-                .orient('bottom')
-                .ticks(n_ticks_x)
+        xaxis.scale(xscale)
+            .orient('bottom')
+            .ticks(n_ticks_x)
 //                    .tickFormat(time_format)
-                .tickPadding(10);
+            .tickPadding(10);
 
-            // Update the y-scale.
-            yscale.domain(d3.extent(data, function(d) { return d[1]; }))
-            yscale.range([plot_height - margin.top - margin.bottom, 0]);
+        // Update the y-scale.
+        yscale.domain(d3.extent(data_points, function(d) { return d[1]; }))
+        yscale.range([plot_height - margin.top - margin.bottom, 0]);
 
-            yaxis.scale(yscale)
-                .orient('left')
-                .ticks(15, "d")
-                .tickSize(6, 0)
-                .innerTickSize(-width)
-                .outerTickSize(0)
-                .tickPadding(10);
+        yaxis.scale(yscale)
+            .orient('left')
+            .ticks(15, "d")
+            .tickSize(6, 0)
+            .innerTickSize(-width)
+            .outerTickSize(0)
+            .tickPadding(10);
 //            yaxis.tickValues([0, 1, 2, 3, 5, 7, 10, 20, 40, 100, 150, 200, 300, 400]);
 
-            var bisectDate = d3.bisector(function(d) { return d.time; }).left;
+        var bisectDate = d3.bisector(function(d) { return d.time; }).left;
 
-            function mousemove() {
-                console.log('mousemove');
-                var x0 = xscale.invert(d3.mouse(this)[0]);
-                var i = bisectDate(data, x0, 1);
-                if (i > 0 && i < data.length) {
-                    var d0 = data[i - 1];
-                    var d1 = data[i];
-                    var d = x0 - d0.time > d1.time - x0 ? d1 : d0;
-                } else { // mouse is outside the plot area, i is not valid
-                    var d = data[data.length-1];
-                }
+        // append the circle at the intersection
+        focus.append("circle")
+            .attr("class", "y")
+            .style("fill", "none")
+            .style("stroke-width", 3)
+            .style("stroke", "black")
+            .attr("r", 5);
 
-                focus.select("circle.y")
-                    .attr("transform",
-                          "translate(" + xscale(d.datetime) + "," +
-                                         xscale(d.y) + ")");
+        // place the value at the intersection
+        focus.append("text")
+            .attr("class", "y1")
+            .style("stroke", "black")
+            .style("stroke-width", "3.5px")
+            .style("opacity", 0.8)
+            .attr("dx", 8)
+            .attr("dy", "-.3em");
 
-                var formatDate = d3.time.format("%d %b %H:%M");
+        focus.append("text")
+            .attr("class", "y2")
+            .style("fill", "white")
+            .attr("dx", 8)
+            .attr("dy", "-.3em");
 
-                var tooltip_x = xscale(d.time) - 100;
-                var tooltip_y = xscale(d[1]) - 30;
-                var translate_str = "translate(" + tooltip_x + "," + tooltip_y + ")";
+        // place the date at the intersection
+        focus.append("text")
+            .attr("class", "y3")
+            .style("stroke", "black")
+            .style("stroke-width", "3.5px")
+            .style("opacity", 0.8)
+            .attr("dx", 8)
+            .attr("dy", "1em");
 
-                focus.select("text.y1")
-                    .attr("transform", translate_str)
-                    .text(Math.round(d[1]) + ' ' + 'meter');
+        focus.append("text")
+            .attr("class", "y4")
+            .style("fill", "white")
+            .attr("dx", 8)
+            .attr("dy", "1em");
 
-                focus.select("text.y2")
-                    .attr("transform", translate_str)
-                    .text(Math.round(d[1]) + ' ' + 'meter');
-
-                focus.select("text.y3")
-                    .attr("transform", translate_str)
-                    .text(formatDate(d.time));
-
-                focus.select("text.y4")
-                    .attr("transform", translate_str)
-                    .text(formatDate(d.time));
-
-                console.log(d.time);
-                console.log(d[1]);
+        function mousemove() {
+//                console.log('mousemove', data.length);
+            var x0 = xscale.invert(d3.mouse(this)[0]);
+            var i = bisectDate(data_points, x0, 1);
+            if (i > 0 && i < data_points.length) {
+                var d0 = data_points[i - 1];
+                var d1 = data_points[i];
+                var d = x0 - d0.time > d1.time - x0 ? d1 : d0;
+            } else { // mouse is outside the plot area, i is not valid
+                var d = data_points[data_points.length-1];
             }
 
-            draw();
-        });
+            focus.select("circle.y")
+                .attr("transform",
+                      "translate(" + xscale(d.time) + "," +
+                                     yscale(d[1]) + ")");
+
+            var formatDate = d3.time.format("%d %b %H:%M");
+
+            var tooltip_x = xscale(d.time) - 100;
+            var tooltip_y = xscale(d[1]) - 30;
+            var translate_str = "translate(" + tooltip_x + "," + tooltip_y + ")";
+
+            focus.select("text.y1")
+                .attr("transform", translate_str)
+                .text(Math.round(d[1]) + ' ' + 'meter');
+
+            focus.select("text.y2")
+                .attr("transform", translate_str)
+                .text(Math.round(d[1]) + ' ' + 'meter');
+
+            focus.select("text.y3")
+                .attr("transform", translate_str)
+                .text(formatDate(d.time));
+
+            focus.select("text.y4")
+                .attr("transform", translate_str)
+                .text(formatDate(d.time));
+
+//                console.log(d.time);
+//                console.log(d[1]);
+        }
+
+        draw();
 
         return chart;
     }
@@ -243,7 +280,7 @@ function example() {
 //        console.log('update begin');
         var gs = svg.select("g.scatter");
         var circle = gs.selectAll("circle");
-        data.forEach(function(d) { d.time = new Date(d[0] * 1000); });  // from posix seconds to ms
+        data_points.forEach(function(d) { d.time = new Date(d[0] * 1000); });  // from posix seconds to ms
 //        update_path();
         update_circles(circle);
 //        console.log('update end');
@@ -251,11 +288,11 @@ function example() {
 
     function update_path() {
         var pathline = svg.select("path.line");
-        pathline.attr("d", valueline(data));
+        pathline.attr("d", valueline(data_points));
     }
 
     function update_circles(circle) {
-        circle = circle = circle.data(data, function(d) { return d; });
+        circle = circle = circle.data(data_points, function(d) { return d; });
         circle.enter().append("svg:circle")
             .attr("class", "marker")
             .attr("cx", function(d) {return X(d);})
@@ -353,7 +390,7 @@ function example() {
         if (!all_in_buffer || zoomlevel != zoomlevel_previous) {
             console.log('DATA UPDATE');
             zoomlevel_previous = zoomlevel;
-            data = [];
+            data_points = [];
             tiles_current = [];
             for (var i in tile_filenames) {
                 var tile_filename = tile_filenames[i];
@@ -375,19 +412,19 @@ function example() {
         }
 
         update();
-        console.log("ntiles:", tile_filenames.length, "zoomlevel:", zoomlevel, "points:", data.length/2);
+        console.log("ntiles:", tile_filenames.length, "zoomlevel:", zoomlevel, "points:", data_points.length/2);
     }
 
     function add_line(line) {
         for (var i in line) {
-            data.push([line[i][0]*scale_fac_x+offset_x, (line[i][1]+45)*scale_fac_y+offset_y]);
+            data_points.push([line[i][0]*scale_fac_x+offset_x, (line[i][1]+45)*scale_fac_y+offset_y]);
         }
     }
 
     function add_multi_line(line_segments) {
         for (var i in line_segments) {
             for (var j in line_segments[i]) {
-                data.push([line_segments[i][j][0]*scale_fac_x+offset_x, (line_segments[i][j][1]+45)*scale_fac_y+offset_y]);
+                data_points.push([line_segments[i][j][0]*scale_fac_x+offset_x, (line_segments[i][j][1]+45)*scale_fac_y+offset_y]);
             }
         }
     }
